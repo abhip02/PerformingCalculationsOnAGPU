@@ -25,6 +25,7 @@ void add_arrays(const float* inA,
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         
+        // find a GPU
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
         // Create the custom object used to encapsulate the Metal code.

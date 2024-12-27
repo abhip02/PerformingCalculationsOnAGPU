@@ -54,6 +54,7 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
         }
 
         // Create a compute pipeline state object.
+        // previous function is a proxy for MSL function, but is not executable code: need to convert function into executable code with a pipeline
         _mAddFunctionPSO = [_mDevice newComputePipelineStateWithFunction: addFunction error:&error];
         if (_mAddFunctionPSO == nil)
         {
