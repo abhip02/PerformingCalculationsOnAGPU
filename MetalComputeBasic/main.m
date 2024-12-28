@@ -7,20 +7,11 @@ An app that performs a simple calculation on a GPU.
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
-#import "MetalAdder.h"
+#import "MetalCompute.h"
 
-// This is the C version of the function that the sample
-// implements in Metal Shading Language.
-void add_arrays(const float* inA,
-                const float* inB,
-                float* result,
-                int length)
-{
-    for (int index = 0; index < length ; index++)
-    {
-        result[index] = inA[index] + inB[index];
-    }
-}
+
+// adding in more functionality
+
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
@@ -30,13 +21,16 @@ int main(int argc, const char * argv[]) {
 
         // Create the custom object used to encapsulate the Metal code.
         // Initializes objects to communicate with the GPU.
-        MetalAdder* adder = [[MetalAdder alloc] initWithDevice:device];
+        MetalCalc* calc = [[MetalCalc alloc] initWithDevice:device];
+        //MetalCalc* dot = [[MetalCalc alloc] initWithDevice:device];
         
         // Create buffers to hold data
-        [adder prepareData];
+        [calc prepareData];
+        //[dot prepareData];
         
         // Send a command to the GPU to perform the calculation.
-        [adder sendComputeCommand];
+        [calc sendComputeCommand];
+        //[dot sendComputeCommand];
 
         NSLog(@"Execution finished");
     }

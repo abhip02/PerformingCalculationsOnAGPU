@@ -5,18 +5,19 @@ Abstract:
 A class to manage all of the Metal objects this app creates.
 */
 
-#import "MetalAdder.h"
+#import "MetalCompute.h"
 
 // The number of floats in each array, and the size of the arrays in bytes.
 const unsigned int arrayLength = 1 << 24;
 const unsigned int bufferSize = arrayLength * sizeof(float);
 
-@implementation MetalAdder
+@implementation MetalCalc
 {
     id<MTLDevice> _mDevice;
 
     // The compute pipeline generated from the compute kernel in the .metal shader file.
-    id<MTLComputePipelineState> _mAddFunctionPSO;
+    id<MTLComputePipelineState> _mAddFunctionPSO; // add function
+    id<MTLComputePipelineState> _mSubFunctionPSO; // sub function
 
     // The command queue used to pass commands to the device.
     id<MTLCommandQueue> _mCommandQueue;
@@ -46,22 +47,43 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
             return nil;
         }
 
+        // MTL add function
         id<MTLFunction> addFunction = [defaultLibrary newFunctionWithName:@"add_arrays"];
         if (addFunction == nil)
         {
             NSLog(@"Failed to find the adder function.");
             return nil;
         }
+        
+        // MTL Sub function
+        id<MTLFunction> subFunction = [defaultLibrary newFunctionWithName:@"sub_arrays"];
+        if (subFunction == nil)
+        {
+            NSLog(@"Failed to find the sub function.");
+            return nil;
+        }
 
         // Create a compute pipeline state object.
         // previous function is a proxy for MSL function, but is not executable code: need to convert function into executable code with a pipeline
+        // PSO add function
         _mAddFunctionPSO = [_mDevice newComputePipelineStateWithFunction: addFunction error:&error];
         if (_mAddFunctionPSO == nil)
         {
             //  If the Metal API validation is enabled, you can find out more information about what
             //  went wrong.  (Metal API validation is enabled by default when a debug build is run
             //  from Xcode)
-            NSLog(@"Failed to created pipeline state object, error %@.", error);
+            NSLog(@"Failed to created Add pipeline state object, error %@.", error);
+            return nil;
+        }
+        
+        // PSO sub function
+        _mSubFunctionPSO = [_mDevice newComputePipelineStateWithFunction: subFunction error:&error];
+        if (_mSubFunctionPSO == nil)
+        {
+            //  If the Metal API validation is enabled, you can find out more information about what
+            //  went wrong.  (Metal API validation is enabled by default when a debug build is run
+            //  from Xcode)
+            NSLog(@"Failed to created Sub pipeline state object, error %@.", error);
             return nil;
         }
 
@@ -93,15 +115,34 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
     id<MTLCommandBuffer> commandBuffer = [_mCommandQueue commandBuffer];
     assert(commandBuffer != nil);
 
+    
     // Start a compute pass.
-    id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
-    assert(computeEncoder != nil);
+    id<MTLComputeCommandEncoder> computeEncoderAdd = [commandBuffer computeCommandEncoder];
+    assert(computeEncoderAdd != nil);
 
-    [self encodeAddCommand:computeEncoder];
+    [self encodeAddCommand:computeEncoderAdd];
+    printf("done1\n");
 
     // End the compute pass.
-    [computeEncoder endEncoding];
+    [computeEncoderAdd endEncoding];
+    
+    // Execute the command buffer.
+    //[commandBuffer commit];
 
+    // Wait for the GPU to complete the first task.
+    //[commandBuffer waitUntilCompleted];
+    
+    //[self verifyAddResults];
+
+    id<MTLComputeCommandEncoder> computeEncoderSub = [commandBuffer computeCommandEncoder];
+    assert(computeEncoderSub != nil);
+    
+    [self encodeSubCommand:computeEncoderSub];
+    printf("done2\n");
+    //[self verifySubResults];
+    
+    [computeEncoderSub endEncoding];
+    
     // Execute the command.
     [commandBuffer commit];
 
@@ -109,12 +150,13 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
     // but in this example, the code simply blocks until the calculation is complete.
     [commandBuffer waitUntilCompleted];
 
-    [self verifyResults];
+    [self verifySubResults];
 }
 
 - (void)encodeAddCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
 
     // Encode the pipeline state object and its parameters.
+    printf("add");
     [computeEncoder setComputePipelineState:_mAddFunctionPSO];
     [computeEncoder setBuffer:_mBufferA offset:0 atIndex:0];
     [computeEncoder setBuffer:_mBufferB offset:0 atIndex:1];
@@ -133,6 +175,33 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
     // Encode the compute command.
     [computeEncoder dispatchThreads:gridSize
               threadsPerThreadgroup:threadgroupSize];
+    
+}
+
+// adding "sub" function
+- (void)encodeSubCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
+
+    // Encode the pipeline state object and its parameters.
+    printf("sub");
+    [computeEncoder setComputePipelineState:_mSubFunctionPSO];
+    [computeEncoder setBuffer:_mBufferA offset:0 atIndex:0];
+    [computeEncoder setBuffer:_mBufferB offset:0 atIndex:1];
+    [computeEncoder setBuffer:_mBufferResult offset:0 atIndex:2];
+
+    MTLSize gridSize = MTLSizeMake(arrayLength, 1, 1);
+
+    // Calculate a threadgroup size.
+    NSUInteger threadGroupSize = _mSubFunctionPSO.maxTotalThreadsPerThreadgroup;
+    if (threadGroupSize > arrayLength)
+    {
+        threadGroupSize = arrayLength;
+    }
+    MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+
+    // Encode the compute command.
+    [computeEncoder dispatchThreads:gridSize
+              threadsPerThreadgroup:threadgroupSize];
+    
 }
 
 - (void) generateRandomFloatData: (id<MTLBuffer>) buffer
@@ -144,7 +213,7 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
         dataPtr[index] = (float)rand()/(float)(RAND_MAX);
     }
 }
-- (void) verifyResults
+- (void) verifyAddResults
 {
     float* a = _mBufferA.contents;
     float* b = _mBufferB.contents;
@@ -154,11 +223,29 @@ const unsigned int bufferSize = arrayLength * sizeof(float);
     {
         if (result[index] != (a[index] + b[index]))
         {
-            printf("Compute ERROR: index=%lu result=%g vs %g=a+b\n",
+            printf("Add Compute ERROR: index=%lu result=%g vs %g=a+b\n",
                    index, result[index], a[index] + b[index]);
             assert(result[index] == (a[index] + b[index]));
         }
     }
-    printf("Compute results as expected\n");
+    printf("(Adder) Compute results as expected\n");
+}
+
+- (void) verifySubResults
+{
+    float* a = _mBufferA.contents;
+    float* b = _mBufferB.contents;
+    float* result = _mBufferResult.contents;
+
+    for (unsigned long index = 0; index < arrayLength; index++)
+    {
+        if (result[index] != (a[index] - b[index]))
+        {
+            printf("Sub Compute ERROR: index=%lu result=%g vs %g=a-b\n",
+                   index, result[index], a[index] - b[index]);
+            assert(result[index] == (a[index] - b[index]));
+        }
+    }
+    printf("(Sub) Compute results as expected\n");
 }
 @end
