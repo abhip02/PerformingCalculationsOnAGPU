@@ -22,15 +22,12 @@ int main(int argc, const char * argv[]) {
         // Create the custom object used to encapsulate the Metal code.
         // Initializes objects to communicate with the GPU.
         MetalCalc* calc = [[MetalCalc alloc] initWithDevice:device];
-        //MetalCalc* dot = [[MetalCalc alloc] initWithDevice:device];
         
         // Create buffers to hold data
-        [calc prepareData];
-        //[dot prepareData];
+        [calc prepareDataDot];
         
         // Send a command to the GPU to perform the calculation.
         [calc sendComputeCommand];
-        //[dot sendComputeCommand];
 
         NSLog(@"Execution finished");
     }

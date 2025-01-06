@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		386703872D1FDA500090AC52 /* sub.metal in Sources */ = {isa = PBXBuildFile; fileRef = 386703862D1FDA4B0090AC52 /* sub.metal */; };
 		386703932D1FE6400090AC52 /* MetalCompute.m in Sources */ = {isa = PBXBuildFile; fileRef = 386703922D1FE6400090AC52 /* MetalCompute.m */; };
+		386703952D1FE7E50090AC52 /* dot.metal in Sources */ = {isa = PBXBuildFile; fileRef = 386703942D1FE7E00090AC52 /* dot.metal */; };
+		386703972D1FEC2F0090AC52 /* tests.m in Sources */ = {isa = PBXBuildFile; fileRef = 386703962D1FEC290090AC52 /* tests.m */; };
 		3ADA093523458F4800F5A9C6 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3ADA093423458F4400F5A9C6 /* CoreGraphics.framework */; };
 		5FFAD4D421C8647E00384F46 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FFAD4D321C8647E00384F46 /* main.m */; };
 		5FFAD4DC21C8648800384F46 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5FFAD4DB21C8648800384F46 /* Metal.framework */; };
@@ -32,8 +34,10 @@
 		386703862D1FDA4B0090AC52 /* sub.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = sub.metal; sourceTree = "<group>"; };
 		386703892D1FDBD90090AC52 /* MetalCompute.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalCompute.h; sourceTree = "<group>"; };
 		386703922D1FE6400090AC52 /* MetalCompute.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetalCompute.m; sourceTree = "<group>"; };
+		386703942D1FE7E00090AC52 /* dot.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = dot.metal; sourceTree = "<group>"; };
+		386703962D1FEC290090AC52 /* tests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = tests.m; sourceTree = "<group>"; };
+		386703982D1FED160090AC52 /* tests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tests.h; sourceTree = "<group>"; };
 		3ADA093423458F4400F5A9C6 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.Internal.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
-		4A106723543224C1C65C1662 /* LICENSE.txt */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE.txt; sourceTree = "<group>"; };
 		5FB82D1A221CE2C7006D0331 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5FFAD4D021C8647E00384F46 /* MetalComputeBasic */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MetalComputeBasic; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FFAD4D321C8647E00384F46 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -70,7 +74,6 @@
 				5FFAD4D121C8647E00384F46 /* Products */,
 				5FFAD4DA21C8648800384F46 /* Frameworks */,
 				23874244E20619B16248E770 /* Configuration */,
-				7A094A9D7CE6DF0EC0F9700D /* LICENSE */,
 			);
 			sourceTree = "<group>";
 		};
@@ -85,6 +88,9 @@
 		5FFAD4D221C8647E00384F46 /* MetalComputeBasic */ = {
 			isa = PBXGroup;
 			children = (
+				386703982D1FED160090AC52 /* tests.h */,
+				386703962D1FEC290090AC52 /* tests.m */,
+				386703942D1FE7E00090AC52 /* dot.metal */,
 				386703892D1FDBD90090AC52 /* MetalCompute.h */,
 				386703862D1FDA4B0090AC52 /* sub.metal */,
 				386703922D1FE6400090AC52 /* MetalCompute.m */,
@@ -101,14 +107,6 @@
 				5FFAD4DB21C8648800384F46 /* Metal.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		7A094A9D7CE6DF0EC0F9700D /* LICENSE */ = {
-			isa = PBXGroup;
-			children = (
-				4A106723543224C1C65C1662 /* LICENSE.txt */,
-			);
-			path = LICENSE;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -171,7 +169,9 @@
 				386703872D1FDA500090AC52 /* sub.metal in Sources */,
 				5FFAD4D421C8647E00384F46 /* main.m in Sources */,
 				386703932D1FE6400090AC52 /* MetalCompute.m in Sources */,
+				386703972D1FEC2F0090AC52 /* tests.m in Sources */,
 				5FFAD4DE21C869B700384F46 /* add.metal in Sources */,
+				386703952D1FE7E50090AC52 /* dot.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
