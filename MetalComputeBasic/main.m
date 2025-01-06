@@ -24,6 +24,9 @@ int main(int argc, const char * argv[]) {
         MetalCalc* calc = [[MetalCalc alloc] initWithDevice:device];
         
         // Create buffers to hold data
+        [calc prepareData];
+        
+        // Create buffers to hold data
         [calc prepareDataDot];
         
         // Send a command to the GPU to perform the calculation.

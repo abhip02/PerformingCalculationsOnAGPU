@@ -15,9 +15,16 @@ A class to manage all of the Metal objects this app creates.
 const unsigned int debugLength = 256;
 const unsigned int debugSize = debugLength * sizeof(int);
 
-const unsigned int arrayLength = (1000 * 256 * 256);
-const unsigned int bufferSize = arrayLength * sizeof(float);
-const unsigned int bufferSizeDot = arrayLength * sizeof(int);
+//const unsigned long arrayLength = 1 << 24;
+const unsigned long arrayLength = 1000 * 256 * 256;
+const unsigned long bufferSize = arrayLength * sizeof(float);
+const unsigned long bufferSizeDot = arrayLength * sizeof(int);
+
+CFAbsoluteTime startTimeCPU;
+CFAbsoluteTime endTimeCPU;
+
+CFAbsoluteTime startTimeGPU;
+CFAbsoluteTime endTimeGPU;
 
 @implementation MetalCalc
 {
@@ -30,6 +37,8 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
 
     // The command queue used to pass commands to the device.
     id<MTLCommandQueue> _mCommandQueue;
+    
+    id<MTLBuffer> arrayLengthBuffer;
     
     // Debug Buffer
     id<MTLBuffer> _mBufferDebug;
@@ -160,6 +169,7 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     // debug buffer
     _mBufferDebug = [_mDevice newBufferWithLength:debugSize options:MTLResourceStorageModeShared];
     
+    
 
     [self generateRandomIntData:_mBufferADot];
     [self generateRandomIntData:_mBufferBDot];
@@ -173,23 +183,29 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     assert(commandBuffer != nil);
 
     
-////    // Start a compute pass.
+//////    // Start a compute pass.
 //    id<MTLComputeCommandEncoder> computeEncoderAdd = [commandBuffer computeCommandEncoder];
 //    assert(computeEncoderAdd != nil);
 //
 //    [self encodeAddCommand:computeEncoderAdd];
 //    printf("done1\n");
-//
+////
 //    // End the compute pass.
 //    [computeEncoderAdd endEncoding];
-    
-    // Execute the command buffer.
-    //[commandBuffer commit];
-
-    // Wait for the GPU to complete the first task.
-    //[commandBuffer waitUntilCompleted];
-    
-    //[self verifyAddResults];
+//    
+//    // start GPU time measure
+//    startTimeGPU = CFAbsoluteTimeGetCurrent();
+//    
+////     Execute the command buffer.
+//    [commandBuffer commit];
+//
+////     Wait for the GPU to complete the first task.
+//    [commandBuffer waitUntilCompleted];
+//    
+//    // end GPU time measure
+//    endTimeGPU = CFAbsoluteTimeGetCurrent();
+//    
+//    [self verifyAddResults];
 
 //    id<MTLComputeCommandEncoder> computeEncoderSub = [commandBuffer computeCommandEncoder];
 //    assert(computeEncoderSub != nil);
@@ -205,10 +221,15 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     id<MTLComputeCommandEncoder> computeEncoderDot = [commandBuffer computeCommandEncoder];
     assert(computeEncoderDot != nil);
     
+    
+//    startTimeGPU = CFAbsoluteTimeGetCurrent();
     [self encodeDotCommand:computeEncoderDot];
     printf("(dot) Computed dot. \n");
     
     [computeEncoderDot endEncoding];
+    
+    // start GPU time measure
+    startTimeGPU = CFAbsoluteTimeGetCurrent();
     
     // Execute the command.
     [commandBuffer commit];
@@ -216,6 +237,10 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     // Normally, you want to do other work in your app while the GPU is running,
     // but in this example, the code simply blocks until the calculation is complete.
     [commandBuffer waitUntilCompleted];
+    
+    // end GPU time measure
+    endTimeGPU = CFAbsoluteTimeGetCurrent();
+    
 
 //    [self verifyAddResults];
     [self verifyDotResults];
@@ -283,8 +308,13 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     [computeEncoder setBuffer:_mBufferBDot offset:0 atIndex:1];
     [computeEncoder setBuffer:_mBufferResultDot offset:0 atIndex:2]; // integer buffer, will become an atomic buffer
     
+    // Pass arrayLength to the kernel
+    [computeEncoder setBytes:&arrayLength length:sizeof(arrayLength) atIndex:3];
+    
     // debug buffer
-    [computeEncoder setBuffer:_mBufferDebug offset:0 atIndex:3]; // integer buffer, will become an atomic buffer
+    [computeEncoder setBuffer:_mBufferDebug offset:0 atIndex:4]; // integer buffer, will become an atomic buffer
+    
+    // arrayLength
 
     MTLSize gridSize = MTLSizeMake(arrayLength, 1, 1);
 
@@ -301,21 +331,6 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     // Encode the compute command.
     [computeEncoder dispatchThreads:gridSize
               threadsPerThreadgroup:threadgroupSize];
-}
-
-// adding "dot" function
-- (void) dotPostProcess: (id<MTLBuffer>) buffer {
-    float sum = 0.0;
-    float* partialSums = _mBufferResult.contents;
-    
-    for (int i = 0; i < _mBufferResult.length; i++) {
-        if (partialSums[i] > 0) {
-            printf("%f", partialSums[i]);
-            sum += partialSums[i];
-        }
-    }
-    float* result = _mBufferResult.contents;
-    *result = sum;
 }
 
 
@@ -348,6 +363,7 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     float* a = _mBufferA.contents;
     float* b = _mBufferB.contents;
     float* result = _mBufferResult.contents;
+    
 
     for (unsigned long index = 0; index < arrayLength; index++)
     {
@@ -385,8 +401,8 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     int* b = _mBufferBDot.contents;
     int* result = _mBufferResultDot.contents;
     
-    int* debug =_mBufferDebug.contents;
     
+//    int* debug =_mBufferDebug.contents;
 //    // print debug buffer
 //    for (int i = 0; i < debugLength; i++) {
 //        printf("%u\n", debug[i]);
@@ -394,18 +410,31 @@ const unsigned int bufferSizeDot = arrayLength * sizeof(int);
     
     int dot = 0;
 
+    // CPU dot product computation; with timing
+    CFAbsoluteTime startTimeCPU = CFAbsoluteTimeGetCurrent();
     for (unsigned long index = 0; index < arrayLength; index++)
     {
         dot += a[index] * b[index];
     }
+    CFAbsoluteTime endTimeCPU = CFAbsoluteTimeGetCurrent();
     
-    if (abs(*result - dot) > 0.01)
+    if (*result != dot)
     {
         printf("Dot Compute ERROR\n");
         printf("Dot: %u\n", dot);
         printf("Result: %u\n", *result);
-//        assert(abs(*result - dot) < 0.01);
+//        assert(*result == dot);
     }
+    
+    CFAbsoluteTime timeCPU = endTimeCPU - startTimeCPU;
+    CFAbsoluteTime timeGPU = endTimeGPU - startTimeGPU;
+    CFAbsoluteTime speedup = timeCPU / timeGPU;
+    
+    
+    printf("CPU compute time: %f\n", timeCPU);
+    printf("GPU compute time: %f\n", timeGPU);
+    printf("Speedup: %ux\n\n", (int) speedup);
+    
     printf("Dot: %u\n", dot);
     printf("Result: %u\n", *result);
     printf("(Dot) Compute results as expected\n");

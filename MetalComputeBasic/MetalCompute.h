@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface MetalCalc : NSObject
 - (instancetype) initWithDevice: (id<MTLDevice>) device;
+- (void) prepareData;
 - (void) prepareDataDot;
 - (void) sendComputeCommand;
 @end
