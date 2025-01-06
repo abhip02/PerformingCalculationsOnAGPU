@@ -14,3 +14,6 @@ _**Current Progress:**_
 - Use an Atomic Add operation to accumulate the sum of all caches into the final result
   - Atomic operation is necessary to prevent race conditions on the final result, because all threadgroups should carefully access and write to RESULT
   - Metal only offers "int" atomic operations currently
+ 
+
+Apple's Metal tutorial that inspired this project: https://developer.apple.com/documentation/metal/performing_calculations_on_a_gpu.
