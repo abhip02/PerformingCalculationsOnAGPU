@@ -29,6 +29,9 @@ int main(int argc, const char * argv[]) {
         // Create buffers to hold data (dot)
         [calc prepareDataDot];
         
+        // Create buffers to hold data (dot)
+        [calc prepareDatapSum];
+        
         // Create buffers to hold data (matmul)
         [calc prepareDataMatMul];
         

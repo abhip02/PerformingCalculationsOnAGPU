@@ -18,6 +18,7 @@ const unsigned int debugSize = debugLength * sizeof(int);
 const unsigned long arrayLength = 1000 * 256 * 256;
 const unsigned long bufferSize = arrayLength * sizeof(float);
 const unsigned long bufferSizeDot = arrayLength * sizeof(int);
+const unsigned long bufferSizepSum = arrayLength * sizeof(int);
 
 const unsigned long matrixN = 1024; // 1 << 8 = 256
 const unsigned long matrixLength = matrixN * matrixN; // 4 * 4 matrix
@@ -37,6 +38,7 @@ CFAbsoluteTime endTimeGPU;
     id<MTLComputePipelineState> _mAddFunctionPSO; // add function
     id<MTLComputePipelineState> _mSubFunctionPSO; // sub function
     id<MTLComputePipelineState> _mDotFunctionPSO; // dot function
+    id<MTLComputePipelineState> _mpSumFunctionPSO; // dot function
     id<MTLComputePipelineState> _mMatMulFunctionPSO; // matmul function
 
     // The command queue used to pass commands to the device.
@@ -56,6 +58,11 @@ CFAbsoluteTime endTimeGPU;
     id<MTLBuffer> _mBufferADot;
     id<MTLBuffer> _mBufferBDot;
     id<MTLBuffer> _mBufferResultDot;
+    
+    // integer buffers for prefix sum
+    id<MTLBuffer> _mBufferApSum;
+    id<MTLBuffer> _mBufferBpSum;
+    id<MTLBuffer> _mBufferResultpSum;
     
     // integer buffers for matmul product
     id<MTLBuffer> _mBufferAMatMul;
@@ -107,6 +114,14 @@ CFAbsoluteTime endTimeGPU;
             return nil;
         }
         
+        // MTL PrefixSum function
+        id<MTLFunction> pSumFunction = [defaultLibrary newFunctionWithName:@"prefix_sum"];
+        if (pSumFunction == nil)
+        {
+            NSLog(@"Failed to find the prefixSum function.");
+            return nil;
+        }
+        
         // MTL MatMul function
         id<MTLFunction> matMulFunction = [defaultLibrary newFunctionWithName:@"matmul_arrays"];
         if (matMulFunction == nil)
@@ -141,6 +156,14 @@ CFAbsoluteTime endTimeGPU;
         if (_mDotFunctionPSO == nil)
         {
             NSLog(@"Failed to created Dot pipeline state object, error %@.", error);
+            return nil;
+        }
+        
+        // PSO prefixSum function
+        _mpSumFunctionPSO = [_mDevice newComputePipelineStateWithFunction: pSumFunction error:&error];
+        if (_mpSumFunctionPSO == nil)
+        {
+            NSLog(@"Failed to created pSum pipeline state object, error %@.", error);
             return nil;
         }
         
@@ -193,6 +216,16 @@ CFAbsoluteTime endTimeGPU;
 
     [self generateRandomIntData:_mBufferADot];
     [self generateRandomIntData:_mBufferBDot];
+}
+
+- (void) prepareDatapSum
+{
+    // Allocate three buffers to hold our initial data and the result.
+    _mBufferApSum = [_mDevice newBufferWithLength:bufferSizepSum options:MTLResourceStorageModeShared];
+    _mBufferResultpSum = [_mDevice  newBufferWithLength:bufferSizepSum options:MTLResourceStorageModeShared];
+    
+    // generate data
+    [self generateRandomIntData:_mBufferApSum];
 }
 
 - (void) prepareDataMatMul
@@ -260,14 +293,23 @@ CFAbsoluteTime endTimeGPU;
 //    
 //    [computeEncoderDot endEncoding];
     
-//    // MATMUL
-    id<MTLComputeCommandEncoder> computeEncoderMatMul = [commandBuffer computeCommandEncoder];
-    assert(computeEncoderMatMul != nil);
+    // pSum
+    id<MTLComputeCommandEncoder> computeEncoderpSum = [commandBuffer computeCommandEncoder];
+    assert(computeEncoderpSum != nil);
+
+    [self encodepSumCommand:computeEncoderpSum];
+    printf("Encoded pSum. \n");
+
+    [computeEncoderpSum endEncoding];
     
-    [self encodeMatMulCommand:computeEncoderMatMul];
-    printf("Encoded matmul. \n");
-    
-    [computeEncoderMatMul endEncoding];
+////    // MATMUL
+//    id<MTLComputeCommandEncoder> computeEncoderMatMul = [commandBuffer computeCommandEncoder];
+//    assert(computeEncoderMatMul != nil);
+//    
+//    [self encodeMatMulCommand:computeEncoderMatMul];
+//    printf("Encoded matmul. \n");
+//    
+//    [computeEncoderMatMul endEncoding];
 
     // start GPU time measure
     startTimeGPU = CFAbsoluteTimeGetCurrent();
@@ -285,7 +327,8 @@ CFAbsoluteTime endTimeGPU;
 
 //    [self verifyAddResults];
 //    [self verifyDotResults];
-    [self verifyMatMulResults];
+    [self verifypSumResults];
+//    [self verifyMatMulResults];
 }
 
 - (void)encodeAddCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
@@ -362,6 +405,32 @@ CFAbsoluteTime endTimeGPU;
 
     // Calculate a threadgroup size.
     NSUInteger threadGroupSize = _mDotFunctionPSO.maxTotalThreadsPerThreadgroup;
+    if (threadGroupSize > arrayLength)
+    {
+        threadGroupSize = arrayLength;
+    }
+    printf("Max Thread Group Size: %lu\n", threadGroupSize);
+    
+    MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+
+    // Encode the compute command.
+    [computeEncoder dispatchThreads:gridSize
+              threadsPerThreadgroup:threadgroupSize];
+}
+
+// adding "pSum" function
+- (void)encodepSumCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
+
+    // Encode the pipeline state object and its parameters.
+    printf("pSum\n");
+    [computeEncoder setComputePipelineState:_mpSumFunctionPSO];
+    [computeEncoder setBuffer:_mBufferApSum offset:0 atIndex:0];
+    [computeEncoder setBuffer:_mBufferResultpSum offset:0 atIndex:1]; // integer buffer, will become an atomic buffer
+
+    MTLSize gridSize = MTLSizeMake(arrayLength, 1, 1);
+
+    // Calculate a threadgroup size.
+    NSUInteger threadGroupSize = _mpSumFunctionPSO.maxTotalThreadsPerThreadgroup;
     if (threadGroupSize > arrayLength)
     {
         threadGroupSize = arrayLength;
@@ -509,14 +578,14 @@ CFAbsoluteTime endTimeGPU;
     int* b = _mBufferBDot.contents;
     int* result = _mBufferResultDot.contents;
     
-//    int* debug =_mBufferDebug.contents;
-//    // print debug buffer
-//    for (int i = 0; i < debugLength; i++) {
-//        printf("%u\n", debug[i]);
-//    }
+    //    int* debug =_mBufferDebug.contents;
+    //    // print debug buffer
+    //    for (int i = 0; i < debugLength; i++) {
+    //        printf("%u\n", debug[i]);
+    //    }
     
     int dot = 0;
-
+    
     // CPU dot product computation; with timing
     CFAbsoluteTime startTimeCPU = CFAbsoluteTimeGetCurrent();
     for (unsigned long index = 0; index < arrayLength; index++)
@@ -530,6 +599,30 @@ CFAbsoluteTime endTimeGPU;
         printf("Dot Compute ERROR\n");
         printf("Dot: %u\n", dot);
         printf("Result: %u\n", *result);
+        //        assert(*result == dot);
+    }
+}
+    
+- (void) verifypSumResults
+{
+    int* a = _mBufferApSum.contents;
+    int* result = _mBufferResultpSum.contents;
+
+    int sum = 0;
+
+    // CPU dot product computation; with timing
+    CFAbsoluteTime startTimeCPU = CFAbsoluteTimeGetCurrent();
+    for (unsigned long index = 0; index < arrayLength; index++)
+    {
+        sum += a[index];
+    }
+    CFAbsoluteTime endTimeCPU = CFAbsoluteTimeGetCurrent();
+    
+    if (*result != sum)
+    {
+        printf("pSum Compute ERROR\n");
+        printf("pSum: %u\n", sum);
+        printf("Result: %u\n", *result);
 //        assert(*result == dot);
     }
     
@@ -542,9 +635,9 @@ CFAbsoluteTime endTimeGPU;
     printf("GPU compute time: %f\n", timeGPU);
     printf("Speedup: %ux\n\n", (int) speedup);
     
-    printf("Dot: %u\n", dot);
+    printf("pSum: %u\n", sum);
     printf("Result: %u\n", *result);
-    printf("(Dot) Compute results as expected\n");
+    printf("(pSum) Compute results as expected\n");
 }
 
 - (void) verifyMatMulResults

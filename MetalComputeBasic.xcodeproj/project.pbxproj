@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		383B07AE2D30AA87000A9A32 /* matmul.metal in Sources */ = {isa = PBXBuildFile; fileRef = 383B07AD2D30AA83000A9A32 /* matmul.metal */; };
+		383B07B02D31AC38000A9A32 /* prefixsum.metal in Sources */ = {isa = PBXBuildFile; fileRef = 383B07AF2D31AC2F000A9A32 /* prefixsum.metal */; };
 		386703872D1FDA500090AC52 /* sub.metal in Sources */ = {isa = PBXBuildFile; fileRef = 386703862D1FDA4B0090AC52 /* sub.metal */; };
 		386703932D1FE6400090AC52 /* MetalCompute.m in Sources */ = {isa = PBXBuildFile; fileRef = 386703922D1FE6400090AC52 /* MetalCompute.m */; };
 		386703952D1FE7E50090AC52 /* dot.metal in Sources */ = {isa = PBXBuildFile; fileRef = 386703942D1FE7E00090AC52 /* dot.metal */; };
@@ -33,6 +34,7 @@
 /* Begin PBXFileReference section */
 		00E3B7B90BF943DB3EE281D2 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = SampleCode.xcconfig; path = Configuration/SampleCode.xcconfig; sourceTree = "<group>"; };
 		383B07AD2D30AA83000A9A32 /* matmul.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = matmul.metal; sourceTree = "<group>"; };
+		383B07AF2D31AC2F000A9A32 /* prefixsum.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = prefixsum.metal; sourceTree = "<group>"; };
 		386703862D1FDA4B0090AC52 /* sub.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = sub.metal; sourceTree = "<group>"; };
 		386703892D1FDBD90090AC52 /* MetalCompute.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalCompute.h; sourceTree = "<group>"; };
 		386703922D1FE6400090AC52 /* MetalCompute.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetalCompute.m; sourceTree = "<group>"; };
@@ -90,6 +92,7 @@
 		5FFAD4D221C8647E00384F46 /* MetalComputeBasic */ = {
 			isa = PBXGroup;
 			children = (
+				383B07AF2D31AC2F000A9A32 /* prefixsum.metal */,
 				383B07AD2D30AA83000A9A32 /* matmul.metal */,
 				386703982D1FED160090AC52 /* tests.h */,
 				386703962D1FEC290090AC52 /* tests.m */,
@@ -172,6 +175,7 @@
 				383B07AE2D30AA87000A9A32 /* matmul.metal in Sources */,
 				386703872D1FDA500090AC52 /* sub.metal in Sources */,
 				5FFAD4D421C8647E00384F46 /* main.m in Sources */,
+				383B07B02D31AC38000A9A32 /* prefixsum.metal in Sources */,
 				386703932D1FE6400090AC52 /* MetalCompute.m in Sources */,
 				386703972D1FEC2F0090AC52 /* tests.m in Sources */,
 				5FFAD4DE21C869B700384F46 /* add.metal in Sources */,

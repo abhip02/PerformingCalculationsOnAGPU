@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype) initWithDevice: (id<MTLDevice>) device;
 - (void) prepareData;
 - (void) prepareDataDot;
+- (void) prepareDatapSum;
 - (void) prepareDataMatMul;
 - (void) sendComputeCommand;
 @end
