@@ -509,7 +509,6 @@ CFAbsoluteTime endTimeGPU;
     int* b = _mBufferBDot.contents;
     int* result = _mBufferResultDot.contents;
     
-    
 //    int* debug =_mBufferDebug.contents;
 //    // print debug buffer
 //    for (int i = 0; i < debugLength; i++) {
@@ -584,11 +583,9 @@ CFAbsoluteTime endTimeGPU;
     }
     
     // No compute error
-
     CFAbsoluteTime timeCPU = endTimeCPU - startTimeCPU;
     CFAbsoluteTime timeGPU = endTimeGPU - startTimeGPU;
     CFAbsoluteTime speedup = timeCPU / timeGPU;
-    
     
     printf("CPU compute time: %f\n", timeCPU);
     printf("GPU compute time: %f\n", timeGPU);
