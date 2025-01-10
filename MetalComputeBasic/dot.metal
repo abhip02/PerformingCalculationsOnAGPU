@@ -2,7 +2,6 @@
 Abstract: A shader that dots two arrays.
  - Shared threadgroup cache
  - Uses atomic add at end to write to "result"
- -
 */
 
 #include <metal_stdlib>
@@ -46,22 +45,24 @@ kernel void dot_arrays(device const int* inA,
     //        temp += inA[i] * inB[i];
     //    }
     
-    // individual threads execute this parallelly (the for loop)
-    temp += inA[startIndex + threadGroupIndex] * inB[startIndex + threadGroupIndex];
+    // individual threads execute this parallelly (the for loop above)
+//    temp += inA[startIndex + threadGroupIndex] * inB[startIndex + threadGroupIndex];
+    temp += inA[index] * inB[index];
     cache[threadGroupIndex] = temp;
     
-    //    // local sum using STRIDE
-    // this method has inefficient memory access patterns
-    //    uint stride = threadgroupSize;
-    //    uint forIndex = index;
-    //    int temp = 0;
-    //    while (forIndex < arrayLength) {
-    //        temp += inA[forIndex] * inB[forIndex];
-    //        forIndex += stride;
-    //    }
-    //
-    //    cache[threadGroupIndex] = temp;
-    // end stride method
+// local sum using STRIDE
+// this method has inefficient memory access patterns:
+    
+//        uint stride = threadgroupSize;
+//        uint forIndex = index;
+//        int temp = 0;
+//        while (forIndex < arrayLength) {
+//            temp += inA[forIndex] * inB[forIndex];
+//            forIndex += stride;
+//        }
+//    
+//        cache[threadGroupIndex] = temp;
+//  end stride method
     
     // sync threads
     threadgroup_barrier(metal::mem_flags::mem_threadgroup);
@@ -77,10 +78,6 @@ kernel void dot_arrays(device const int* inA,
         threadgroup_barrier(metal::mem_flags::mem_threadgroup);
         stride /= 2;
     }
-    
-    //    //sync threads
-    //   threadgroup_barrier(metal::mem_flags::mem_threadgroup);
-    
     
     // accumulate all threadgroup caches
     // only 1 thread from each threadgroup should reduce, otherwise will overcount

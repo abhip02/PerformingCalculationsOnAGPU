@@ -15,10 +15,13 @@ A class to manage all of the Metal objects this app creates.
 const unsigned int debugLength = 256;
 const unsigned int debugSize = debugLength * sizeof(int);
 
-//const unsigned long arrayLength = 1 << 24;
 const unsigned long arrayLength = 1000 * 256 * 256;
 const unsigned long bufferSize = arrayLength * sizeof(float);
 const unsigned long bufferSizeDot = arrayLength * sizeof(int);
+
+const unsigned long matrixN = 1024; // 1 << 8 = 256
+const unsigned long matrixLength = matrixN * matrixN; // 4 * 4 matrix
+const unsigned long matrixSize = matrixLength * sizeof(float);
 
 CFAbsoluteTime startTimeCPU;
 CFAbsoluteTime endTimeCPU;
@@ -33,7 +36,8 @@ CFAbsoluteTime endTimeGPU;
     // The compute pipeline generated from the compute kernel in the .metal shader file.
     id<MTLComputePipelineState> _mAddFunctionPSO; // add function
     id<MTLComputePipelineState> _mSubFunctionPSO; // sub function
-    id<MTLComputePipelineState> _mDotFunctionPSO; // sub function
+    id<MTLComputePipelineState> _mDotFunctionPSO; // dot function
+    id<MTLComputePipelineState> _mMatMulFunctionPSO; // matmul function
 
     // The command queue used to pass commands to the device.
     id<MTLCommandQueue> _mCommandQueue;
@@ -52,6 +56,11 @@ CFAbsoluteTime endTimeGPU;
     id<MTLBuffer> _mBufferADot;
     id<MTLBuffer> _mBufferBDot;
     id<MTLBuffer> _mBufferResultDot;
+    
+    // integer buffers for matmul product
+    id<MTLBuffer> _mBufferAMatMul;
+    id<MTLBuffer> _mBufferBMatMul;
+    id<MTLBuffer> _mBufferResultMatMul;
     
 
 }
@@ -97,6 +106,14 @@ CFAbsoluteTime endTimeGPU;
             NSLog(@"Failed to find the dot function.");
             return nil;
         }
+        
+        // MTL MatMul function
+        id<MTLFunction> matMulFunction = [defaultLibrary newFunctionWithName:@"matmul_arrays"];
+        if (matMulFunction == nil)
+        {
+            NSLog(@"Failed to find the matmul function.");
+            return nil;
+        }
 
         // Create a compute pipeline state object.
         // previous function is a proxy for MSL function, but is not executable code: need to convert function into executable code with a pipeline
@@ -115,24 +132,27 @@ CFAbsoluteTime endTimeGPU;
         _mSubFunctionPSO = [_mDevice newComputePipelineStateWithFunction: subFunction error:&error];
         if (_mSubFunctionPSO == nil)
         {
-            //  If the Metal API validation is enabled, you can find out more information about what
-            //  went wrong.  (Metal API validation is enabled by default when a debug build is run
-            //  from Xcode)
             NSLog(@"Failed to created Sub pipeline state object, error %@.", error);
             return nil;
         }
         
         // PSO dot function
         _mDotFunctionPSO = [_mDevice newComputePipelineStateWithFunction: dotFunction error:&error];
-        if (_mSubFunctionPSO == nil)
+        if (_mDotFunctionPSO == nil)
         {
-            //  If the Metal API validation is enabled, you can find out more information about what
-            //  went wrong.  (Metal API validation is enabled by default when a debug build is run
-            //  from Xcode)
             NSLog(@"Failed to created Dot pipeline state object, error %@.", error);
             return nil;
         }
+        
+        // PSO MatMul function
+        _mMatMulFunctionPSO = [_mDevice newComputePipelineStateWithFunction: matMulFunction error:&error];
+        if (_mMatMulFunctionPSO == nil)
+        {
+            NSLog(@"Failed to created MatMul pipeline state object, error %@.", error);
+            return nil;
+        }
 
+        // create COMMAND QUEUE that executes buffers
         _mCommandQueue = [_mDevice newCommandQueue];
         if (_mCommandQueue == nil)
         {
@@ -173,6 +193,21 @@ CFAbsoluteTime endTimeGPU;
 
     [self generateRandomIntData:_mBufferADot];
     [self generateRandomIntData:_mBufferBDot];
+}
+
+- (void) prepareDataMatMul
+{
+    // Allocate three buffers to hold our initial data and the result.
+    _mBufferAMatMul = [_mDevice newBufferWithLength:matrixSize options:MTLResourceStorageModeShared];
+    _mBufferBMatMul = [_mDevice newBufferWithLength:matrixSize options:MTLResourceStorageModeShared];
+    _mBufferResultMatMul = [_mDevice  newBufferWithLength:matrixSize options:MTLResourceStorageModeShared];
+    
+    // debug buffer
+    _mBufferDebug = [_mDevice newBufferWithLength:debugSize options:MTLResourceStorageModeShared];
+    
+
+    [self generateRandomFloatDataMatMul:_mBufferAMatMul];
+    [self generateRandomFloatDataMatMul:_mBufferBMatMul];
 }
 
 
@@ -217,17 +252,23 @@ CFAbsoluteTime endTimeGPU;
 //    [computeEncoderSub endEncoding];
     
     // DOT
+//    id<MTLComputeCommandEncoder> computeEncoderDot = [commandBuffer computeCommandEncoder];
+//    assert(computeEncoderDot != nil);
+//    
+//    [self encodeDotCommand:computeEncoderDot];
+//    printf("(dot) Computed dot. \n");
+//    
+//    [computeEncoderDot endEncoding];
     
-    id<MTLComputeCommandEncoder> computeEncoderDot = [commandBuffer computeCommandEncoder];
-    assert(computeEncoderDot != nil);
+//    // MATMUL
+    id<MTLComputeCommandEncoder> computeEncoderMatMul = [commandBuffer computeCommandEncoder];
+    assert(computeEncoderMatMul != nil);
     
+    [self encodeMatMulCommand:computeEncoderMatMul];
+    printf("Encoded matmul. \n");
     
-//    startTimeGPU = CFAbsoluteTimeGetCurrent();
-    [self encodeDotCommand:computeEncoderDot];
-    printf("(dot) Computed dot. \n");
-    
-    [computeEncoderDot endEncoding];
-    
+    [computeEncoderMatMul endEncoding];
+
     // start GPU time measure
     startTimeGPU = CFAbsoluteTimeGetCurrent();
     
@@ -243,7 +284,8 @@ CFAbsoluteTime endTimeGPU;
     
 
 //    [self verifyAddResults];
-    [self verifyDotResults];
+//    [self verifyDotResults];
+    [self verifyMatMulResults];
 }
 
 - (void)encodeAddCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
@@ -324,9 +366,47 @@ CFAbsoluteTime endTimeGPU;
     {
         threadGroupSize = arrayLength;
     }
-    printf("Thread Group Size: %lu\n", threadGroupSize);
+    printf("Max Thread Group Size: %lu\n", threadGroupSize);
     
     MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+
+    // Encode the compute command.
+    [computeEncoder dispatchThreads:gridSize
+              threadsPerThreadgroup:threadgroupSize];
+}
+
+// adding "matmul" function
+- (void)encodeMatMulCommand:(id<MTLComputeCommandEncoder>)computeEncoder {
+
+    // Encode the pipeline state object and its parameters.
+    printf("matmul\n");
+    [computeEncoder setComputePipelineState:_mMatMulFunctionPSO];
+    [computeEncoder setBuffer:_mBufferAMatMul offset:0 atIndex:0];
+    [computeEncoder setBuffer:_mBufferBMatMul offset:0 atIndex:1];
+    [computeEncoder setBuffer:_mBufferResultMatMul offset:0 atIndex:2]; // integer buffer, will become an atomic buffer
+    
+//    // Pass arrayLength to the kernel
+//    [computeEncoder setBytes:&arrayLength length:sizeof(matrixLength) atIndex:3];
+    
+    // debug buffer
+    [computeEncoder setBuffer:_mBufferDebug offset:0 atIndex:3]; // integer buffer, will become an atomic buffer
+    
+    // arrayLength
+
+//    MTLSize gridSize = MTLSizeMake(matrixN, matrixN, 1); // covers the entire matrix
+    // but I am using a flattened matrix (can't pass 2D array to Metal kernel)
+    MTLSize gridSize = MTLSizeMake(matrixN, matrixN, 1); // covers the entire 1D FLATTENED matrix
+    
+
+    // Calculate a threadgroup size.
+    NSUInteger threadGroupSize = _mMatMulFunctionPSO.maxTotalThreadsPerThreadgroup;
+    if (threadGroupSize > matrixN)
+    {
+        threadGroupSize = matrixN;
+    }
+    printf("Max Thread Group Size: %lu\n", threadGroupSize);
+    
+    MTLSize threadgroupSize = MTLSizeMake(sqrt(threadGroupSize), sqrt(threadGroupSize), 1); // root(n) * root(n) = n = threadGroupSize
 
     // Encode the compute command.
     [computeEncoder dispatchThreads:gridSize
@@ -356,6 +436,34 @@ CFAbsoluteTime endTimeGPU;
 //        dataPtr[index] = 1.123123981729387;
     }
 }
+
+- (void) generateRandomIntDataMatMul: (id<MTLBuffer>) buffer
+{
+    int* dataPtr = buffer.contents;
+
+    for (unsigned long index = 0; index < matrixLength; index++)
+    {
+//        dataPtr[index] = (float)rand()/(float)(RAND_MAX);
+//        dataPtr[index] = 1;
+        dataPtr[index] = (rand() % 2);
+//        dataPtr[index] = 1.123123981729387;
+    }
+}
+
+- (void) generateRandomFloatDataMatMul: (id<MTLBuffer>) buffer
+{
+    float* dataPtr = buffer.contents;
+
+    for (unsigned long index = 0; index < matrixLength; index++)
+    {
+        dataPtr[index] = (float)rand()/(float)(RAND_MAX);
+        
+//        dataPtr[index] = 0.1;
+//        dataPtr[index] = (rand() % 2);
+//        dataPtr[index] = 1.123123981729387;
+    }
+}
+
 
 
 - (void) verifyAddResults
@@ -439,4 +547,54 @@ CFAbsoluteTime endTimeGPU;
     printf("Result: %u\n", *result);
     printf("(Dot) Compute results as expected\n");
 }
+
+- (void) verifyMatMulResults
+{
+    float* a = _mBufferAMatMul.contents;
+    float* b = _mBufferBMatMul.contents;
+    float* result = _mBufferResultMatMul.contents;
+    
+    float reference[matrixLength];
+    
+
+    // CPU MatMul computation; with timing
+    float acc = 0;
+    CFAbsoluteTime startTimeCPU = CFAbsoluteTimeGetCurrent();
+    for (unsigned long i = 0; i < matrixN; i++) {           // row
+        for (unsigned long j = 0; j < matrixN; j++) {       // col
+            acc = 0;
+            for (unsigned long k = 0; k < matrixN; k++) {   //
+                acc += a[(i * matrixN) + k] * b[j + (k * matrixN)];
+            }
+            reference[(i * matrixN) + j] = acc;
+        }
+    }
+    CFAbsoluteTime endTimeCPU = CFAbsoluteTimeGetCurrent();
+    
+    
+    // Check for error
+    for (unsigned long i = 0; i < matrixLength; i++)
+    {
+//        printf("%f; %f\n", reference[i], result[i]);
+        if (result[i] != reference[i])
+        {
+            printf("MatMul Compute ERROR: \n");
+            assert(result[i] == reference[i]);
+        }
+    }
+    
+    // No compute error
+
+    CFAbsoluteTime timeCPU = endTimeCPU - startTimeCPU;
+    CFAbsoluteTime timeGPU = endTimeGPU - startTimeGPU;
+    CFAbsoluteTime speedup = timeCPU / timeGPU;
+    
+    
+    printf("CPU compute time: %f\n", timeCPU);
+    printf("GPU compute time: %f\n", timeGPU);
+    printf("Speedup: %ux\n\n", (int) speedup);
+
+    printf("(MatMul) Compute results as expected\n");
+}
+
 @end
