@@ -15,7 +15,7 @@ _**Current Progress:**_
   - Metal only offers "int" atomic operations currently
 - Follows parallel prefix sum algorithm: [https://en.wikipedia.org/wiki/Prefix_sum]
   
-**1D Dot Product Shader:**
+**1D Dot Product Shader**
 - Achieve **>2x speedup** compared to naive CPU implementation
 - Use threadgroup shared "cache" for each threadgroup to compute the dot product synchronously, and have quicker shared memory writes across threads
 - First Attempt (10x slowdown): stride access pattern
