@@ -4,7 +4,7 @@ Write Metal Shaders in MSL (Metal Shading Language) in xCode to run calculations
 
 _**Current Progress:**_
 - 1D Add, Sub, and Dot Product achieves 2x speedup with metal kernel compared to CPU.
-- >100x speedup on float Matrix Multiplication on GPU compared to naive CPU implementation (when matrix length > 512)
+- 100x speedup on float Matrix Multiplication on GPU compared to naive CPU implementation (when matrix length > 512)
 
 **1D Dot Product Shader:**
 - Achieve **>2x speedup** compared to naive CPU implementation
