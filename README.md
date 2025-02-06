@@ -6,6 +6,8 @@ _**Current Progress:**_
 - 2x speedup on 1D Add, Sub, Prefix Sum, and Dot Product with metal kernel compared to CPU.
 - 100x speedup on 2D float Matrix Multiplication on GPU compared to naive CPU implementation (when matrix length > 512).
 
+_**KERNELS**_
+
 **1D Prefix Sum Shader**
 - Achieve **>2x speedup** compared to naive CPU implementation
 - Use threadgroup shared "cache" for each threadgroup to compute the dot product synchronously, and have quicker shared memory writes across threads
@@ -29,6 +31,8 @@ _**Current Progress:**_
 - Use 2D grid to cover entire result matrix; Use 2D threads in threadgroups
 - Input matrices are flattened first (Metal shaders don't take 2D arrays as input; decided not to use Metal's "Matrix Class" to implement it from scratch)
 - "Accumulator" stores each result position; no shared memory
+
+_**PROFILING**_
 
 **Profiling GPU Performance**
 - Use Instruments Metal System Trace application
