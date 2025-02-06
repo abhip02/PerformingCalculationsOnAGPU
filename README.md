@@ -1,6 +1,6 @@
 # Performing Calculations on a GPU
 
-Write Metal Shaders in MSL (Metal Shading Language) from scratch in xCode to run calculations on Apple M1 Pro Metal GPU.
+Write Metal Shaders in MSL (Metal Shading Language) from scratch in xCode to run calculations on Apple M1 Pro Metal GPU. Profile GPU performance using the Instruments Metal System Trace application.
 
 _**Current Progress:**_
 - 2x speedup on 1D Add, Sub, Prefix Sum, and Dot Product with metal kernel compared to CPU.
@@ -29,6 +29,10 @@ _**Current Progress:**_
 - Use 2D grid to cover entire result matrix; Use 2D threads in threadgroups
 - Input matrices are flattened first (Metal shaders don't take 2D arrays as input; decided not to use Metal's "Matrix Class" to implement it from scratch)
 - "Accumulator" stores each result position; no shared memory
+
+**Profiling GPU Performance**
+- Use Instruments Metal System Trace application
+- Notes/analysis in "traceAnalysis.txt"
 
 **Ideas for Next Steps**
 - Quantization: right now the dot product only takes Integer inputs, so try to take FP32 data, quantize it and run the operation, then use the data again
