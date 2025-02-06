@@ -1,0 +1,8 @@
+"dotStridevsCont.trace" Analysis Notes:
+
+Observations:
+- Stride version of dot product has more GPU actions in its "Fragment Shaders" section
+    - Actions: Read and Write data
+
+Analysis:
+- This is expected, since when a stride data access pattern is used instead of continuous access, cache coherency will be lower. Each access will require a new data action.
