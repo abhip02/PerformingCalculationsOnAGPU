@@ -39,6 +39,6 @@ _**PROFILING**_
 - Notes/analysis in "traceAnalysis.txt"
 
 **Ideas for Next Steps**
-- Quantization: right now the dot product only takes Integer inputs, so try to take FP32 data, quantize it and run the operation, then use the data again
+- Quantize a model, and run computations on the quantized weights.
 
 Apple's Metal tutorial that inspired this project: https://developer.apple.com/documentation/metal/performing_calculations_on_a_gpu.
